@@ -12,7 +12,7 @@
     "@vue/devtools-api": "^7.7.2",
     "axios": "^1.8.4",
     "dompurify": "^3.4.17",
-    "pinia": "^2.3.1",
+    "pinia": "^4.1.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
