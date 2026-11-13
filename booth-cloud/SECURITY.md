@@ -67,4 +67,4 @@ openssl rand -base64 32   # BOOTH_SECURITY_SECRET / Nacos token 等
 3. 关 Grafana 匿名、Nacos/Rabbit 管理台裸奔。  
 4. HTTPS；密钥走环境变量；发布前密钥扫描（P1-S7）。
 
-相关：[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md) · [`docs/DEMO-DATA.md`](docs/DEMO-DATA.md) · 套件 [`发布准备-todo.md`](../发布准备-todo.md)
+相关：[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md) · [`docs/DEMO-DATA.md`](docs/DEMO-DATA.md)

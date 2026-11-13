@@ -4,11 +4,9 @@
 
 观感参考小米商城（橙黑白）；信息架构参考 Shopper / Tigshop。
 
-## 写操作约定（三仓共用）
+## 客服写操作
 
-全文见仓库套件 [`docs/写操作约定.md`](../docs/写操作约定.md)（与 `booth-cloud` / `booth-agent` 一字不差）。
-
-摘要：客服写操作由 Agent **校验后对话内直写**，本仓**不渲染确认卡**；客服主路径接 **`/app/chat/stream`（SSE）**，同步 `/app/chat` 仅作降级。明确不宣称清单见该文档。
+Agent 校验后直接提交商城，本仓不画确认卡。聊天走 `/agent` → `/app/chat/stream`。口径见 [docs/写操作约定.md](../docs/写操作约定.md)。
 
 ## 功能
 
