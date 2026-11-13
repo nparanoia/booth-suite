@@ -1,6 +1,6 @@
 # Security Policy（booth-agent）
 
-面向本机演示的智能客服进程。详细已做项见 [`docs/security-basics.md`](docs/security-basics.md)；写操作口径见套件 [`docs/写操作约定.md`](../docs/写操作约定.md)。
+面向本机演示的智能客服进程。写操作：校验通过后直写商城网关，带写熔断与幂等。
 
 ## 生产前检查
 

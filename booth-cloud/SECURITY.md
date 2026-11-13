@@ -65,6 +65,6 @@ openssl rand -base64 32   # BOOTH_SECURITY_SECRET / Nacos token 等
 1. 反向代理只放行 gateway（及静态 web）；业务与中间件 listen 内网；勿映射 8081–8084/3306 等。  
 2. 保持 `API_DOCS_ENABLED=false`、`BOOTH_SWAGGER_ENABLED=false`；Actuator 仅 `health`（或内网鉴权后开 prometheus）。  
 3. 关 Grafana 匿名、Nacos/Rabbit 管理台裸奔。  
-4. HTTPS；密钥走环境变量；发布前密钥扫描（P1-S7）。
+4. HTTPS；密钥走环境变量；发布前做一次密钥扫描。
 
-相关：[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md) · [`docs/DEMO-DATA.md`](docs/DEMO-DATA.md)
+启动步骤见本目录 [README.md](README.md)。

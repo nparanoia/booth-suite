@@ -22,6 +22,6 @@
 
 ## 店主口令
 
-演示账号见 booth-cloud [`docs/DEMO-DATA.md`](../booth-cloud/docs/DEMO-DATA.md)（常见 `admin` / `admin123`）。登录失败有服务端 IP 限流；**不能**代替改密。
+演示账号：`admin` / `admin123`（仅本地）。登录失败有服务端 IP 限流；**不能**代替改密。
 
 报告漏洞：勿公开贴 Token；联系 Maintainer。

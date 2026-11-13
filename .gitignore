@@ -1,3 +1,9 @@
+# local notes / drafts — not for the public tree
+/docs/
+booth-cloud/docs/
+booth-agent/docs/
+booth-web/docs/
+
 # deps / build
 **/node_modules/
 **/dist/
