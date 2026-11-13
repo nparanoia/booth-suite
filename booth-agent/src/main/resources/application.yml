@@ -1,0 +1,84 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: booth-agent
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  datasource:
+    url: "${BOOTH_AGENT_DB_URL:jdbc:postgresql://127.0.0.1:5433/booth_agent?connectTimeout=5&socketTimeout=15}"
+    username: ${BOOTH_AGENT_DB_USER:booth}
+    password: ${BOOTH_AGENT_DB_PASSWORD:boothagent}
+    hikari:
+      connection-timeout: 5000
+      maximum-pool-size: 4
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+booth:
+  gateway-base-url: ${BOOTH_GATEWAY_BASE_URL:http://localhost:8080}
+  agent:
+    confirm-ttl: 10m
+    knowledge-min-score: 1
+    vector-min-score: 0.72
+    # 一轮对话最多调用工具的次数，含超时重试
+    max-tool-steps: 4
+    # 读超时额外重试次数，不含第一次
+    timeout-retries: 2
+    governance:
+      max-concurrent-per-user: 3
+      max-requests-per-minute: 30
+      tool-timeout: 8s
+      request-dedup-seconds: 2
+      # true 时拒绝确认写操作（熔断），读与政策仍可用
+      write-circuit-open: ${BOOTH_AGENT_WRITE_CIRCUIT_OPEN:false}
+    support:
+      human-phone: ${BOOTH_AGENT_HUMAN_PHONE:400-800-8820}
+      human-hours: ${BOOTH_AGENT_HUMAN_HOURS:工作日 10:00-18:00（非实时在线）}
+      chat-retention-days: ${BOOTH_AGENT_CHAT_RETENTION_DAYS:90}
+      session-idle: 24h
+    skills:
+      change-address-enabled: true
+      human-transfer-enabled: true
+    llm:
+      # 密钥为空时不会访问大模型。设为 false 可强制走规则分流
+      enabled: ${BOOTH_AGENT_LLM_ENABLED:true}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+    embedding:
+      # auto：有密钥用 openai，否则 ngram。也可强制 ngram / openai
+      provider: ${BOOTH_AGENT_EMBEDDING_PROVIDER:auto}
+      model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+      dimensions: 256
+
+# Spring AI（无真实密钥时用占位 key 仅保证启动；业务上仍走规则降级）
+spring.ai:
+  openai:
+    api-key: ${OPENAI_API_KEY:sk-local-disabled}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+    chat:
+      options:
+        model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+        temperature: 0.0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    # 默认关。本机联调：BOOTH_SWAGGER_ENABLED=true（compose 会映射到 springdoc.*）
+    # 或直接 SPRINGDOC_API_DOCS_ENABLED / SPRINGDOC_SWAGGER_UI_ENABLED=true
+    enabled: false
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: false

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>booth-agent 演示</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --line: #d6d3d1;
+      --card: #fffdf8;
+      --accent: #0f766e;
+      --warn: #b45309;
+      --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #e7f5f2 0, transparent 40%),
+        linear-gradient(180deg, #f7f3ea, var(--bg));
+      min-height: 100vh;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.6rem;
+      letter-spacing: 0.02em;
+    }
+    .sub { color: var(--muted); margin-bottom: 20px; }
+    .sub a { color: var(--accent); }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+    input, textarea, button {
+      font: inherit;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+    @media (max-width: 720px) {
+      .row { grid-template-columns: 1fr; }
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #44403c; }
+    button.warn { background: var(--warn); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #log {
+      height: 420px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 4px;
+    }
+    .bubble {
+      max-width: 85%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+    .user { align-self: flex-end; background: #ccfbf1; }
+    .bot { align-self: flex-start; background: #fff; border: 1px solid var(--line); }
+    .sys { align-self: center; color: var(--muted); font-size: 0.85rem; }
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+    }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>booth-agent</h1>
+  <p class="sub">演示页：登录商城拿令牌，再跟客服对话（SSE）。退货/取消/改地址在对话内校验后直写，无确认卡。运营数据请走商城后台（需管理员登录）。</p>
+
+  <section class="panel">
+    <div class="row" style="grid-template-columns: 1fr 1fr auto;">
+      <div>
+        <label>用户名</label>
+        <input id="username" placeholder="商城会员用户名" autocomplete="username" />
+      </div>
+      <div>
+        <label>密码</label>
+        <input id="password" type="password" placeholder="不预填" autocomplete="current-password" />
+      </div>
+      <button id="loginBtn" type="button">登录</button>
+    </div>
+    <div class="row" style="margin-top:10px; grid-template-columns: 1fr;">
+      <div>
+        <label>会话 ID（可固定，方便多轮）</label>
+        <input id="conversationId" />
+      </div>
+    </div>
+    <p class="meta" id="authMeta">还没登录</p>
+  </section>
+
+  <section class="panel">
+    <div id="log"></div>
+  </section>
+
+  <section class="panel">
+    <div class="composer">
+      <textarea id="message" rows="2" placeholder="试试：七天无理由怎么退 / 查订单 订单号 / 申请退货"></textarea>
+      <button id="sendBtn" type="button">发送</button>
+      <button id="cancelBtn" class="secondary" type="button">取消</button>
+    </div>
+  </section>
+</main>
+<script>
+  const state = {
+    token: "",
+    runId: "",
+    conversationId: (crypto.randomUUID && crypto.randomUUID() || String(Date.now())).replace(/-/g, ""),
+  };
+  document.getElementById("conversationId").value = state.conversationId;
+
+  function agentBase() {
+    return window.location.origin;
+  }
+
+  function addBubble(text, cls) {
+    const div = document.createElement("div");
+    div.className = "bubble " + cls;
+    div.textContent = text;
+    document.getElementById("log").appendChild(div);
+    document.getElementById("log").scrollTop = 999999;
+    return div;
+  }
+
+  async function login() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const res = await fetch(agentBase() + "/app/demo/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.code !== 0) {
+      addBubble("登录失败：" + (json.message || res.status), "sys");
+      return;
+    }
+    state.token = json.data.token;
+    document.getElementById("authMeta").textContent = "已登录：" + username;
+    addBubble("登录成功", "sys");
+  }
+
+  async function send() {
+    if (!state.token) {
+      addBubble("请先登录", "sys");
+      return;
+    }
+    const message = document.getElementById("message").value.trim();
+    if (!message) return;
+    state.conversationId = document.getElementById("conversationId").value.trim() || state.conversationId;
+    document.getElementById("conversationId").value = state.conversationId;
+    document.getElementById("message").value = "";
+    addBubble(message, "user");
+    const bot = addBubble("…", "bot");
+    let body = "";
+    document.getElementById("sendBtn").disabled = true;
+    try {
+      const res = await fetch(agentBase() + "/app/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + state.token,
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({ message, conversationId: state.conversationId }),
+      });
+      if (!res.ok) {
+        bot.textContent = "请求失败：" + res.status;
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let eventName = "message";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop();
+        for (const chunk of chunks) {
+          const lines = chunk.split("\n");
+          let data = "";
+          eventName = "message";
+          for (const line of lines) {
+            if (line.startsWith("event:")) eventName = line.slice(6).trim();
+            if (line.startsWith("data:")) data += line.slice(5).trim();
+          }
+          if (!data) continue;
+          let payload = {};
+          try { payload = JSON.parse(data); } catch { payload = { text: data }; }
+          if (eventName === "started") {
+            state.runId = payload.runId || "";
+            addBubble("开始 runId=" + state.runId, "sys");
+          } else if (eventName === "progress") {
+            addBubble(payload.text || "处理中", "sys");
+          } else if (eventName === "token") {
+            body += payload.text || "";
+            bot.textContent = body;
+          } else if (eventName === "cancelled") {
+            addBubble("已取消", "sys");
+          } else if (eventName === "done") {
+            bot.textContent = payload.reply || body || bot.textContent;
+            if (payload.sources && payload.sources.length) {
+              addBubble("来源：" + payload.sources.join(", "), "sys");
+            }
+          } else if (eventName === "error") {
+            bot.textContent = payload.message || "出错了";
+          }
+        }
+      }
+    } catch (e) {
+      bot.textContent = "网络错误：" + e.message;
+    } finally {
+      document.getElementById("sendBtn").disabled = false;
+    }
+  }
+
+  async function cancel() {
+    if (!state.runId || !state.token) return;
+    await fetch(agentBase() + "/app/chat/cancel", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + state.token,
+      },
+      body: JSON.stringify({ runId: state.runId }),
+    });
+    addBubble("已请求取消", "sys");
+  }
+
+  document.getElementById("loginBtn").onclick = login;
+  document.getElementById("sendBtn").onclick = send;
+  document.getElementById("cancelBtn").onclick = cancel;
+  document.getElementById("message").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+</script>
+</body>
+</html>

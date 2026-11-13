@@ -1,0 +1,90 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: booth-gateway
+  config:
+    import:
+      - classpath:booth-security.yml
+      - classpath:booth-satoken.yml
+      - classpath:booth-observe.yml
+      - optional:nacos:booth-gateway.yaml
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:localhost:8848}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+    sentinel:
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:}
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: booth-trade-seckill-buy
+              uri: lb://booth-trade
+              predicates:
+                - Path=/trade/app/seckill/*/orders
+                - Method=POST
+              filters:
+                - StripPrefix=1
+            - id: booth-trade-seckill
+              uri: lb://booth-trade
+              predicates:
+                - Path=/trade/app/seckill/**,/trade/open/seckill/**
+              filters:
+                - StripPrefix=1
+            - id: booth-user
+              uri: lb://booth-user
+              predicates:
+                - Path=/user/**
+              filters:
+                - StripPrefix=1
+            - id: booth-product
+              uri: lb://booth-product
+              predicates:
+                - Path=/product/**
+              filters:
+                - StripPrefix=1
+            - id: booth-trade
+              uri: lb://booth-trade
+              predicates:
+                - Path=/trade/**
+              filters:
+                - StripPrefix=1
+            - id: booth-search
+              uri: lb://booth-search
+              predicates:
+                - Path=/search/**
+              filters:
+                - StripPrefix=1
+
+knife4j:
+  gateway:
+    # 默认关；本机联调 API_DOCS_ENABLED=true（见 SECURITY.md / .env.example）
+    enabled: ${API_DOCS_ENABLED:false}
+    strategy: manual
+    routes:
+      - name: 用户服务
+        service-name: booth-user
+        url: /user/v3/api-docs
+        context-path: /user
+      - name: 商品服务
+        service-name: booth-product
+        url: /product/v3/api-docs
+        context-path: /product
+      - name: 交易服务
+        service-name: booth-trade
+        url: /trade/v3/api-docs
+        context-path: /trade
+      - name: 搜索服务
+        service-name: booth-search
+        url: /search/v3/api-docs
+        context-path: /search

@@ -1,0 +1,25 @@
+# 套件工作区：三仓尚未拆远端时先挂在根目录；拆仓后可复制到各仓 .github/
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /booth-cloud
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: maven
+    directory: /booth-agent
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /booth-web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

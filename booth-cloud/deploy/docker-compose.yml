@@ -1,0 +1,272 @@
+# 中间件 + 业务 jar（开箱即业务）。需先 mvn -DskipTests package，并用 gen-env 生成 .env。
+# 最小栈：  docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+# 含搜索：  ... --profile search up -d
+# 监控：    ... --profile obs up -d
+# 全开：    ... --profile full up -d
+name: booth-cloud
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: booth-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      # Canal 增量同步需要 ROW 格式 binlog 与 server-id
+      - --server-id=1
+      - --binlog-format=ROW
+      - --binlog-row-image=FULL
+      # Canal 客户端使用 mysql_native_password 认证，8.4 默认关闭该插件
+      - --mysql-native-password=ON
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4
+    container_name: booth-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    build: ./rabbitmq
+    image: booth/rabbitmq-delayed:3.13
+    # 无本地镜像时走 build；勿对自定义镜像 pull Hub
+    pull_policy: missing
+    container_name: booth-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-booth}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-booth123}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  # Spring Cloud Alibaba 2025.0 自带 Nacos 3.0 客户端，服务端保持同一大版本
+  nacos:
+    image: nacos/nacos-server:v3.0.3
+    container_name: booth-nacos
+    environment:
+      MODE: standalone
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-booth-server}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE}
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      # 3.0 控制台独立监听 8080，映射到宿主机 8090 避免与网关冲突
+      - "8090:8080"
+
+  # 限流规则在代码里，不连上仪表盘也能生效。需要看曲线时再设 SENTINEL_DASHBOARD=localhost:8858
+  sentinel:
+    image: bladex/sentinel-dashboard:1.8.6
+    container_name: booth-sentinel
+    ports:
+      - "8858:8858"
+
+  # 镜像不会把环境变量写进配置，连接信息放在 deploy/canal。消息发到 booth.canal，路由键 booth.product
+  canal:
+    image: canal/canal-server:v1.1.8
+    container_name: booth-canal
+    volumes:
+      - ./canal/canal.properties:/home/admin/canal-server/conf/canal.properties:ro
+      - ./canal/example/instance.properties:/home/admin/canal-server/conf/example/instance.properties:ro
+    ports:
+      - "11111:11111"
+
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+      args:
+        ES_VERSION: ${ES_VERSION:-8.17.0}
+    image: booth/elasticsearch-ik:${ES_VERSION:-8.17.0}
+    pull_policy: missing
+    profiles: ["search", "full"]
+    container_name: booth-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  zipkin:
+    profiles: ["obs", "full"]
+    image: openzipkin/zipkin:3.5.1
+    container_name: booth-zipkin
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["obs", "full"]
+    container_name: booth-prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    profiles: ["obs", "full"]
+    container_name: booth-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      # 默认关匿名；本地看大盘可在 .env 设 GF_AUTH_ANONYMOUS_ENABLED=true
+      GF_AUTH_ANONYMOUS_ENABLED: ${GF_AUTH_ANONYMOUS_ENABLED:-false}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: ${GF_AUTH_ANONYMOUS_ORG_ROLE:-Viewer}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+  # —— 业务应用（挂载本机 jar，镜像 eclipse-temurin:17-jre-jammy）——
+  booth-user:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-user
+    volumes:
+      - ../booth-user/target/booth-user-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+      # 默认关闭；gen-env / .env 本机演示可打开
+      BOOTH_PAY_MOCK_ENABLED: ${BOOTH_PAY_MOCK_ENABLED:-false}
+      BOOTH_PAY_ALLOW_DEV_SECRET: ${BOOTH_PAY_ALLOW_DEV_SECRET:-false}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  booth-product:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-product
+    volumes:
+      - ../booth-product/target/booth-product-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+
+  booth-trade:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-trade
+    volumes:
+      - ../booth-trade/target/booth-trade-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-booth}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-booth123}
+      BOOTH_PAY_MOCK_ENABLED: ${BOOTH_PAY_MOCK_ENABLED:-false}
+      BOOTH_PAY_ALLOW_DEV_SECRET: ${BOOTH_PAY_ALLOW_DEV_SECRET:-false}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  booth-gateway:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-gateway
+    volumes:
+      - ../booth-gateway/target/booth-gateway-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - booth-user
+      - booth-product
+      - booth-trade
+      - nacos
+      - redis
+
+  booth-search:
+    image: eclipse-temurin:17-jre-jammy
+    profiles: ["search", "full"]
+    container_name: booth-app-search
+    volumes:
+      - ../booth-search/target/booth-search-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-booth}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-booth123}
+      ES_URIS: http://elasticsearch:9200
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8084:8084"
+    depends_on:
+      nacos:
+        condition: service_started
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  es-data:

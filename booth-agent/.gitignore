@@ -1,0 +1,16 @@
+target/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.pg/
+.pgdata/
+.pg-password.txt
+.pg-cmd.log
+*.pem
+*.key
+credentials*.json
+secrets/

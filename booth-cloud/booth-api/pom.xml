@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.booth</groupId>
+        <artifactId>booth-cloud</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>booth-api</artifactId>
+    <description>服务间调用契约：各服务 /inner 接口的 Feign 客户端与 DTO</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.booth</groupId>
+            <artifactId>booth-common-core</artifactId>
+        </dependency>
+        <!-- 提供方只需要 DTO，不引入 Feign；调用方自己声明 openfeign 与 loadbalancer -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- 服务间请求体上的校验注解只在提供方生效，这里不传递实现 -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

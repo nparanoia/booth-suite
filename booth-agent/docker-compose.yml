@@ -1,0 +1,70 @@
+# 中间件 + Agent（开箱即业务）。首次或改代码后需已 mvn -DskipTests package。
+#   docker compose up -d
+#   改代码后重建 Agent：docker compose up -d --build
+name: booth-agent
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: booth-agent-pg
+    environment:
+      POSTGRES_DB: booth_agent
+      POSTGRES_USER: booth
+      POSTGRES_PASSWORD: boothagent
+    ports:
+      - "5433:5432"
+    volumes:
+      - agent-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booth -d booth_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7.4
+    container_name: booth-agent-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: booth-agent-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8091:8091"
+    environment:
+      # 容器内禁止 127.0.0.1。不用 ${BOOTH_GATEWAY_BASE_URL} 以免宿主机本机联调变量污染 compose。
+      # 覆盖时请设 AGENT_GATEWAY_URL（例如 http://booth-app-gateway:8080，需先加入 booth-cloud_default 网络）。
+      BOOTH_GATEWAY_BASE_URL: ${AGENT_GATEWAY_URL:-http://host.docker.internal:8080}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      BOOTH_AGENT_DB_URL: jdbc:postgresql://postgres:5432/booth_agent?connectTimeout=5&socketTimeout=15
+      BOOTH_AGENT_DB_USER: booth
+      BOOTH_AGENT_DB_PASSWORD: boothagent
+      # 空字符串会覆盖 yml 默认并触发 Spring AI 强校验；无密钥时用占位并关 LLM
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-local-disabled}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com}
+      BOOTH_AGENT_LLM_ENABLED: ${BOOTH_AGENT_LLM_ENABLED:-false}
+      BOOTH_AGENT_EMBEDDING_PROVIDER: ${BOOTH_AGENT_EMBEDDING_PROVIDER:-ngram}
+      # 默认关 Swagger；本机联调：BOOTH_SWAGGER_ENABLED=true
+      BOOTH_SWAGGER_ENABLED: ${BOOTH_SWAGGER_ENABLED:-false}
+      SPRINGDOC_API_DOCS_ENABLED: ${BOOTH_SWAGGER_ENABLED:-false}
+      SPRINGDOC_SWAGGER_UI_ENABLED: ${BOOTH_SWAGGER_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  agent-pg-data:

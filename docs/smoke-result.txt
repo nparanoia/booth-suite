@@ -1,0 +1,20 @@
+﻿[PASS] member login
+[PASS] admin login
+[PASS] admin me user=admin
+[PASS] policy sources count=1
+[PASS] SSE progress+done (started/progress/token/done)
+[PASS] foreign order denied
+[PASS] return created db=0->1
+[PASS] return idempotent db=1
+[PASS] ops writeReturns=4
+[PASS] web :5173 (vite) home renders
+[PASS] web login -> /support redirect
+[PASS] web support policy quick-action + 知识来源(1)
+[PASS] admin login -> /admin menus + 超管说明
+[INFO] rate-limit: mall-app-user still mounts 0826 mall-user jar; booth-user rate-limit not live until jar swap
+[INFO] tested against mall-* stack + booth-agent :8091 + booth-web :5173
+
+[PASS] login rate-limit member: 1-10 -> 10005, 11+ -> 10006
+[PASS] login rate-limit admin: same
+[PASS] other-IP good login still ok
+[INFO] booth-user jar hot-swapped (SPRING_FLYWAY_ENABLED=false; flyway checksum mismatch vs mall_user V1)

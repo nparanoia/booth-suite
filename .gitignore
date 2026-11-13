@@ -1,0 +1,42 @@
+# deps / build
+**/node_modules/
+**/dist/
+**/target/
+**/.vite/
+
+# secrets & local env
+**/.env
+**/.env.*
+!**/.env.example
+!booth-web/.env.development
+!booth-web/.env.production
+booth-cloud/deploy/.env
+
+# agent local data
+booth-agent/.pg/
+booth-agent/.pgdata/
+booth-agent/.pg-password.txt
+booth-agent/.pg-cmd.log
+
+# ide / os
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# logs / temp
+**/*.log
+**/logs/
+*.tmp
+*.swp
+
+# keys
+*.pem
+*.key
+credentials*.json
+secrets/
+
+# playwright local install leftover
+booth-web/test-results/
+booth-web/playwright-report/

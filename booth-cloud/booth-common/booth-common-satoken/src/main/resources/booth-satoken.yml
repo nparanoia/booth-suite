@@ -1,0 +1,16 @@
+# 网关和用户服务通过 spring.config.import: classpath:booth-satoken.yml 引入，两边必须一致：
+# token-name 参与 Redis key 拼接，不一致会导致网关查不到用户服务签发的 Token
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  # Token 有效期 1 天；不启用活跃超时
+  timeout: 86400
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: random-64
+  # 纯接口项目，只从请求头读取 Token，不用 Cookie，避免 CSRF
+  is-read-cookie: false
+  is-read-body: false
+  is-print: false
+  is-log: false

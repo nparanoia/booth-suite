@@ -1,0 +1,15 @@
+target/
+*.class
+*.log
+logs/
+
+.idea/
+*.iml
+.vscode/
+
+deploy/.env
+deploy/elasticsearch/plugins/*.zip
+*.pem
+*.key
+credentials*.json
+secrets/

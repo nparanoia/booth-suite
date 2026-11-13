@@ -1,0 +1,69 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: booth-trade
+  config:
+    import:
+      - classpath:booth-common.yml
+      - classpath:booth-mybatis.yml
+      - optional:nacos:booth-trade.yaml
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:localhost:8848}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+    sentinel:
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:}
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 15000
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/booth_trade?characterEncoding=utf8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    username: ${MYSQL_USER:booth}
+    password: ${MYSQL_PASSWORD:booth123}
+    hikari:
+      maximum-pool-size: 40
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:booth}
+    password: ${RABBITMQ_PASSWORD:booth123}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        default-requeue-rejected: false
+        prefetch: 16
+
+booth:
+  seckill:
+    hot-qps: 20
+  order:
+    pay-timeout: ${BOOTH_ORDER_PAY_TIMEOUT:30m}
+    auto-receive: ${BOOTH_ORDER_AUTO_RECEIVE:14d}
+  pay:
+    # 默认关闭。本地验收要同时打开下面两个开关，生产环境只配置真实的支付宝参数
+    mock-enabled: ${BOOTH_PAY_MOCK_ENABLED:false}
+    allow-dev-secret: ${BOOTH_PAY_ALLOW_DEV_SECRET:false}
+    mock-secret: ${BOOTH_SECURITY_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    alipay:
+      app-id: ${ALIPAY_APP_ID:}
+      private-key: ${ALIPAY_PRIVATE_KEY:}
+      public-key: ${ALIPAY_PUBLIC_KEY:}
+      gateway: ${ALIPAY_GATEWAY:https://openapi-sandbox.dl.alipaydev.com/gateway.do}
+      notify-url: ${ALIPAY_NOTIFY_URL:}

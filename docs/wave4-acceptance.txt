@@ -1,0 +1,63 @@
+﻿[PASS] gateway health
+[PASS] agent health
+[PASS] register w4a36465
+[PASS] register w4b14120
+[PASS] member1 login
+[PASS] member2 login
+[PASS] admin login
+[PASS] address=1
+[PASS] order confirm
+[PASS] order 202611132121360644338610177
+[PASS] pending 202611132121360657722634241
+[PASS] mock-confirm pay
+[PASS] admin ship
+[PASS] receive completed
+[WARN] demo login {"code":500,"message":"系统繁忙","data":null,"success":false}
+[PASS] policy sources=1
+[PASS] SSE progress+done
+[FAIL] oq 商城拒绝了这次操作：商城暂时不可用。已停止，不会重试。
+[PASS] IDOR denied via agent
+[PASS] IDOR trade detail blocked code=30201
+[FAIL] return1 商城拒绝了这次操作：商城暂时不可用。已停止，不会重试。 db=
+[FAIL] return2 商城拒绝了这次操作：商城暂时不可用。已停止，不会重试。 db=
+[WARN] cancel 商城拒绝了这次操作：商城暂时不可用。已停止，不会重试。
+[PASS] confirm endpoint deprecated msg
+[PASS] ops anonymous blocked code=40100
+[FAIL] ops {"code":50301,"message":"无法校验管理员身份，请确认商城网关可用","data":null,"success":false}
+[PASS] own order query: 订单 202611132121360644338610177 状态：已完成，实付 29.9 元。物流：SF SFW4TE
+[PASS] IDOR agent real deny
+[PASS] return direct-write
+[PASS] return idempotent
+[PASS] cancel via agent
+[PASS] ops summary writeReturns=2
+[PASS] agent demo login
+[INFO] --- security probes ---
+[WARN] gateway inner http=403 body={"code":403,"message":"没有访问权限","data":null,"success":false}
+[PASS] direct inner not open (403)
+[INFO] user inner http=403
+[WARN] FINDING: agent swagger open anonymously (200) — demo OK, prod must close
+[WARN] FINDING: agent api-docs open anonymously (200) — demo OK, prod must close
+[WARN] FINDING: gw doc.html open anonymously (200) — demo OK, prod must close
+[INFO] gw v3 http=404
+[WARN] FINDING: actuator exposed http://127.0.0.1:8080/actuator
+[WARN] FINDING: actuator exposed http://127.0.0.1:8081/actuator
+[WARN] FINDING: actuator exposed http://127.0.0.1:8091/actuator
+[INFO] actuator http://127.0.0.1:8080/actuator/env -> 404
+[WARN] FINDING: actuator exposed http://127.0.0.1:8081/actuator/prometheus
+[PASS] admin me unauth blocked 401
+[PASS] member token cannot admin-me 401
+[PASS] admin token cannot member order API 401
+[PASS] chat unauth blocked 40100
+[PASS] login rate-limit trips at 11
+[PASS] root README marks local-demo
+[PASS] SECURITY.md present
+[PASS] transfer_human reply
+[WARN] FINDING: docker compose inherits host BOOTH_GATEWAY_BASE_URL; if set to 127.0.0.1 agent cannot reach gateway (fixed this run with host.docker.internal)
+[WARN] FINDING: user prometheus metrics scrapeable on :8081 (demo; lock down in prod)
+[INFO] gw actuator body={"_links":{"self":{"href":"http://127.0.0.1:8080/actuator","templated":false},"prometheus":{"href":"http://127.0.0.1:8080/actuator/prometheus","templated":false},"health":{"href":"http://127.0.0.1:808
+[PASS] mock pay notify rejects bad sign
+[PASS] CORS not wide-open on login OPTIONS
+[WARN] web :5173 http=000 (dev server may be down; API 验收已覆盖)
+[WARN] addr-chat 订单 202611132121361550450880514 状态：待发货，实付 29.9 元。暂无物流单号（可能尚未发货）。
+[PASS] policy refuse outside KB
+[PASS] secret-scan report exists

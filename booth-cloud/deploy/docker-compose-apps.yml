@@ -1,0 +1,95 @@
+# 业务定义已并入 docker-compose.yml。本文件仅兼容旧双 -f 命令（叠加相同服务，无额外效果）：
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose-apps.yml --env-file deploy/.env up -d
+# 新用法只需：
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+name: booth-cloud
+
+services:
+  booth-user:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-user
+    volumes:
+      - ../booth-user/target/booth-user-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+      BOOTH_PAY_MOCK_ENABLED: ${BOOTH_PAY_MOCK_ENABLED:-false}
+      BOOTH_PAY_ALLOW_DEV_SECRET: ${BOOTH_PAY_ALLOW_DEV_SECRET:-false}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  booth-product:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-product
+    volumes:
+      - ../booth-product/target/booth-product-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+
+  booth-trade:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-trade
+    volumes:
+      - ../booth-trade/target/booth-trade-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-booth}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-booth123}
+      BOOTH_PAY_MOCK_ENABLED: ${BOOTH_PAY_MOCK_ENABLED:-false}
+      BOOTH_PAY_ALLOW_DEV_SECRET: ${BOOTH_PAY_ALLOW_DEV_SECRET:-false}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:-health,info}
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  booth-gateway:
+    image: eclipse-temurin:17-jre-jammy
+    container_name: booth-app-gateway
+    volumes:
+      - ../booth-gateway/target/booth-gateway-1.0.0-SNAPSHOT.jar:/app.jar:ro
+    command: ["java", "-jar", "/app.jar"]
+    environment:
+      REDIS_HOST: redis
+      NACOS_ADDR: nacos:8848
+    ports:
+      - "8080:8080"
+    depends_on:
+      - booth-user
+      - booth-product
+      - booth-trade
+      - nacos
+      - redis
