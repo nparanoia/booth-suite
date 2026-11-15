@@ -1,27 +1,25 @@
-# Security Policy（booth-web）
+# Security（booth-web）
 
-顾客前台与店主后台（Vue3）。默认假设经本机 Vite 或 nginx 反代访问 gateway / agent。
+会员端与店主后台（Vue 3）。默认经本机 Vite 或 nginx 反向代理访问 gateway / agent。
 
-## 已知演示站风险（诚实）
+## 会话与前端安全
 
-| 项 | 现状 | 生产建议 |
-|----|------|----------|
-| 登录态 | 会员/管理员 Token 在 `localStorage` | httpOnly Cookie + CSRF 策略（需后端配合；演示站明确不做） |
-| 客服会话 id | `ql_support_cid` 在 `localStorage`；logout 会清理 | 同左；勿跨账号共用浏览器未退出会话 |
-| CSP | `index.html` meta 含 `frame-ancestors 'none'` 等；Vite dev/preview 另有 `X-Frame-Options` | 生产由 **nginx 响应头** 下发完整 CSP，勿只依赖 meta |
-| 富文本 | 商品详情经 DOMPurify 再 `v-html` | 保持净化；CMS 来源仍需服务端消毒 |
-| 支付回跳页 | 可能涉及网关返回的 HTML | 仅信任本站网关；全站 HTTPS |
+| 项 | 当前实现 | 生产建议 |
+|----|----------|----------|
+| 登录态 | 会员 / 管理员 Token 存放于 `localStorage` | 可升级为 httpOnly Cookie，并配合 CSRF 防护（需后端支持） |
+| 客服会话 id | `ql_support_cid` 存放于 `localStorage`；logout 时清理 | 避免多账号共用未退出的浏览器会话 |
+| CSP | `index.html` meta 含 `frame-ancestors 'none'` 等；Vite dev / preview 另有 `X-Frame-Options` | 生产由 nginx 响应头下发完整 CSP |
+| 富文本 | 商品详情经 DOMPurify 后 `v-html` | 保持净化；CMS 内容仍需服务端消毒 |
+| 支付回跳 | 可能涉及网关返回的 HTML | 仅信任本站网关；全站 HTTPS |
 
-## nginx 提示
+## nginx
 
-反代 `/gw`、`/agent` 示例见 README。生产请叠加：
+反代 `/gw`、`/agent` 示例见 README。生产建议叠加：
 
-- `Content-Security-Policy`（按实际静态域名与 API 收紧 `connect-src`）  
-- `Strict-Transport-Security`（仅 HTTPS）  
-- 禁止把源站 Actuator / Swagger 路径暴露到公网
+- `Content-Security-Policy`（按静态资源域名与 API 收紧 `connect-src`）
+- `Strict-Transport-Security`（仅 HTTPS）
+- 不对外暴露源站 Actuator / Swagger 路径
 
-## 店主口令
+## 管理员账号
 
-演示账号：`admin` / `admin123`（仅本地）。登录失败有服务端 IP 限流；**不能**代替改密。
-
-报告漏洞：勿公开贴 Token；联系 Maintainer。
+演示账号：`admin` / `admin123`（仅本地）。服务端对登录失败实施 IP 限流，部署前请修改默认口令。

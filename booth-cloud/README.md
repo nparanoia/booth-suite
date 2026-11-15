@@ -1,18 +1,18 @@
 # booth-cloud
 
-Booth 交易底座：Spring Cloud 网关 + 用户 / 商品 / 交易，可选搜索与观测。
+自营电商交易底座：基于 Spring Cloud 提供 API 网关、用户、商品与交易服务，并支持可选的搜索与观测组件。
 
-## Modules
+## 模块
 
-| Module | Port | Role |
-|--------|------|------|
-| booth-gateway | 8080 | API gateway |
-| booth-user | 8081 | Members / admin / RBAC |
-| booth-product | 8082 | Catalog / stock |
-| booth-trade | 8083 | Orders / Mock pay / returns |
+| 模块 | 端口 | 职责 |
+|------|------|------|
+| booth-gateway | 8080 | API 网关 |
+| booth-user | 8081 | 会员 / 管理员 / RBAC |
+| booth-product | 8082 | 商品与库存 |
+| booth-trade | 8083 | 订单 / Mock 支付 / 售后 |
 | booth-search | 8084 | Elasticsearch（profile `search`） |
 
-## Quick start
+## 启动
 
 ```powershell
 cd booth-cloud
@@ -33,17 +33,16 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile obs
 
 默认库名：`booth_user` / `booth_product` / `booth_trade`。容器名 `booth-*`。
 
-## Demo
+## 说明
 
-- Admin: `admin` / `admin123`（仅本地）
+- 管理员：`admin` / `admin123`（仅本地）
 - 商品种子：演示马克杯（product Flyway）
-- 支付：Mock；需要时再配支付宝沙箱
-
-客服写操作会回调本仓网关；订单归属与状态校验仍在本仓完成。
+- 支付：Mock，并预留扩展接口
+- 客服写操作回调本仓网关；订单归属与状态校验由本仓完成
 
 ## Security
 
-见 [SECURITY.md](SECURITY.md)。默认关闭 API 文档与多余 Actuator；`gen-env` 可为本机打开 Mock / 文档。
+详见 [SECURITY.md](SECURITY.md)。默认关闭 API 文档与多余 Actuator；`gen-env` 可为本机打开 Mock / 文档。
 
 ## License
 
